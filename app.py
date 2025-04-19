@@ -2,37 +2,32 @@ from flask import Flask, request, send_from_directory, jsonify, render_template_
 import os
 from werkzeug.utils import secure_filename
 import hashlib
+from config import config
 
 app = Flask(__name__)
 
-# 配置
-UPLOAD_FOLDER = 'dw'
-
-app.config.update({
-    'UPLOAD_FOLDER': UPLOAD_FOLDER
-})
-
 # 确保上传目录存在
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(config.workdir, exist_ok=True)
 
+# 计算文件哈希值
+def calculate_hash(fpath: str) -> str:
+    with open(fpath, 'rb') as f:
+        return hashlib.new('sha256', f.read()).hexdigest()
 
-
-def calculate_hash(filepath):
-    sha256 = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            sha256.update(chunk)
-    return sha256.hexdigest()
-
-@app.route('/api/files', methods=['GET'])
+# 列出文件列表
+@app.route('/api/list', methods=['GET'])
 def list_files():
     return jsonify({
-        'files': os.listdir(app.config['UPLOAD_FOLDER'])
+        'files': sorted(
+            [f for f in os.listdir(config.workdir) 
+             if os.path.isfile(os.path.join(config.workdir, f))]
+        )
     })
 
-@app.route('/api/fileinfo/<filename>', methods=['GET'])
+# 文件信息
+@app.route('/api/info/<filename>', methods=['GET'])
 def get_file_info(filename):
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    filepath = os.path.join(config.workdir, filename)
     if not os.path.exists(filepath):
         return jsonify({'error': '文件不存在'}), 404
     
@@ -40,44 +35,25 @@ def get_file_info(filename):
     return jsonify({
         'filename': filename,
         'hash': file_hash,
-        'downloadUrl': f"{request.host_url}download/{filename}"
+        'downloadUrl': f"{request.host_url}file/{filename}"
     })
 
-@app.route('/api/upload', methods=['POST'])
-def upload():
-    if 'file' not in request.files:
-        return jsonify({'error': '没有文件部分'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': '没有选择文件'}), 400
-    
-
-    
-    filename = secure_filename(file.filename)
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    
-    return jsonify({
-        'message': '文件上传成功',
-        'filename': filename,
-        'url': f"{request.host_url}download/{filename}"
-    })
-
-@app.route('/download/<filename>')
+# 文件直链
+@app.route('/file/<filename>')
 def download(filename):
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    filepath = os.path.join(config.workdir, filename)
     if not os.path.exists(filepath):
         return jsonify({'error': '文件不存在'}), 404
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    return send_from_directory(config.workdir, filename, as_attachment=True)
 
 @app.route('/')
 def index():
-    files = os.listdir(app.config['UPLOAD_FOLDER'])
+    files = os.listdir(config.workdir)
     return render_template_string('''
         <!DOCTYPE html>
         <html>
         <head>
-            <title>文件列表</title>
+            <title>HayFrp File Node</title>
             <style>
                 body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
                 h1 { color: #333; }
@@ -88,11 +64,11 @@ def index():
             </style>
         </head>
         <body>
-            <h1>文件列表</h1>
+            <h1>HayFrp 文件列表</h1>
             <ul id="fileList"></ul>
             <script>
                 async function loadFiles() {
-                    const response = await fetch('/api/files');
+                    const response = await fetch('/api/list');
                     const { files } = await response.json();
                     
                     const list = document.getElementById('fileList');
@@ -101,16 +77,19 @@ def index():
                         const a = document.createElement('a');
                         
                         // 获取文件信息
-                        const infoResponse = await fetch(`/api/fileinfo/${file}`);
+                        const infoResponse = await fetch(`/api/info/${file}`);
                         const fileInfo = await infoResponse.json();
                         
-                        a.href = fileInfo.downloadUrl;
+                        //a.href = fileInfo.downloadUrl;
+                        a.href = `/api/info/${file}`;
                         a.textContent = file;
+                        /*
                         a.onclick = (e) => {
                             e.preventDefault();
                             alert(JSON.stringify(fileInfo, null, 2));
                             return false;
                         };
+                        */                        
                         li.appendChild(a);
                         list.appendChild(li);
                     });
@@ -132,7 +111,7 @@ def api_docs():
 ## API端点
 
 ### 1. 获取文件列表
-- 路径: `/api/files`
+- 路径: `/api/list`
 - 方法: GET
 - 返回格式:
 ```json
@@ -142,35 +121,22 @@ def api_docs():
 ```
 
 ### 2. 获取文件信息
-- 路径: `/api/fileinfo/<filename>`
+- 路径: `/api/info/<filename>`
 - 方法: GET
 - 返回格式:
 ```json
 {
     "filename": "file1.txt",
     "hash": "sha256哈希值",
-    "downloadUrl": "http://host/download/file1.txt"
+    "downloadUrl": "http://host:port/file/file1.txt"
 }
 ```
 
-### 3. 文件上传
-- 路径: `/api/upload`
-- 方法: POST
-- 请求格式: multipart/form-data
-- 返回格式:
-```json
-{
-    "message": "文件上传成功",
-    "filename": "file1.txt",
-    "url": "http://host/download/file1.txt"
-}
-```
-
-### 4. 文件下载
-- 路径: `/download/<filename>`
+### 3. 文件下载
+- 路径: `/file/<filename>`
 - 方法: GET
 - 返回: 文件内容
 """, 200, {'Content-Type': 'text/markdown'}
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(port=config.port)
