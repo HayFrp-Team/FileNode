@@ -31,7 +31,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             hayfrp_file_node:${{ steps.sha.outputs.short_sha }}
-          outputs: "type=docker,dest=./image.tar"
+          outputs: "type=oci,dest=./image.tar"  # 修改导出格式为oci
 
       - name: Split multi-arch images
         run: |

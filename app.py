@@ -27,10 +27,13 @@ def calculate_hash(fpath: str) -> str:
 @app.route('/api/list', methods=['GET'])
 def list_files():
     return jsonify({
+        'code':200,
         'files': sorted(
             [f for f in os.listdir(config.workdir) 
              if os.path.isfile(os.path.join(config.workdir, f))]
-        )
+        ),
+        'node':config.node_uuid,
+        'msg':'success'
     })
 
 # 文件信息
@@ -42,9 +45,12 @@ def get_file_info(filename):
     
     file_hash = calculate_hash(filepath)
     return jsonify({
+        'code':200,
         'filename': filename,
         'hash': file_hash,
-        'downloadUrl': f"{request.host_url}file/{filename}"
+        'downloadUrl': f"{request.host_url}file/{filename}",
+        'node':config.node_uuid,
+        'msg':'success'
     })
 
 # 文件直链
@@ -171,12 +177,14 @@ def run_sync():
             return jsonify({
                 'code': 200,
                 'output': result.stdout,
+                'node':config.node_uuid,
                 'msg': '同步执行成功'
             })
         except subprocess.CalledProcessError as e:
             return jsonify({
                 'code': 500,
                 'output': e.stderr,
+                'node':config.node_uuid,
                 'msg': '同步执行失败'
             })
 
