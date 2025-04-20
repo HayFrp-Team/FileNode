@@ -1,18 +1,35 @@
-# 文件下载服务
+# HayFrp File Node
 
-一个简单的文件上传下载服务，基于Flask框架实现。
+## Employ
 
-## 功能特性
-- 文件上传
-- 文件下载
-- 文件列表查看
-- 文件哈希校验
+- 推荐使用 Docker 部署
+- 直接使用 Python 请注意env、systemd、crontab的配置
 
-## 快速开始
+## API
 
-### 安装依赖
-```bash
-pip install flask werkzeug
+### 1. 获取文件列表
+- 路径: `/api/list`
+- 方法: GET
+- 返回格式:
+```json
+{
+    "files": ["file1.txt", "file2.pdf"]
+}
+```
 
+### 2. 获取文件信息
+- 路径: `/api/info/<filename>`
+- 方法: GET
+- 返回格式:
+```json
+{
+    "filename": "file1.txt",
+    "hash": "sha256哈希值",
+    "downloadUrl": "http://host:port/file/file1.txt"
+}
+```
 
-
+### 3. 文件下载
+- 路径: `/file/<filename>`
+- 方法: GET
+- 返回: 文件内容

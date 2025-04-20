@@ -4,7 +4,16 @@ from werkzeug.utils import secure_filename
 import hashlib
 from config import config
 
+# 在文件顶部新增导入
+import subprocess
+import time
+import threading
+
 app = Flask(__name__)
+
+# 新增同步锁和时间记录
+last_sync_time = 0
+sync_lock = threading.Lock()
 
 # 确保上传目录存在
 os.makedirs(config.workdir, exist_ok=True)
@@ -137,6 +146,39 @@ def api_docs():
 - 方法: GET
 - 返回: 文件内容
 """, 200, {'Content-Type': 'text/markdown'}
+
+# 同步接口
+@app.route('/api/sync', methods=['POST'])
+def run_sync():
+    global last_sync_time
+    
+    with sync_lock:
+        current_time = time.time()
+        if current_time - last_sync_time < config.SYNC_COOLDOWN:
+            return jsonify({
+                'error': '操作过于频繁，请5分钟后再试'
+            }), 429
+            
+        try:
+            # 执行同步脚本
+            result = subprocess.run(
+                ['python', 'sync.py'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            last_sync_time = current_time
+            return jsonify({
+                'code': 200,
+                'output': result.stdout,
+                'msg': '同步执行成功'
+            })
+        except subprocess.CalledProcessError as e:
+            return jsonify({
+                'code': 500,
+                'output': e.stderr,
+                'msg': '同步执行失败'
+            })
 
 if __name__ == '__main__':
     app.run(port=config.port)
