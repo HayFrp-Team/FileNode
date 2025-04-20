@@ -1,0 +1,49 @@
+name: Docker Build and Package
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and export
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            hayfrp_file_node:${{ steps.sha.outputs.short_sha }}
+          outputs: "type=docker,dest=./image.tar"
+
+      - name: Split multi-arch images
+        run: |
+          mkdir -p artifacts
+          docker load --input image.tar
+          for platform in linux-amd64 linux-arm64; do
+            docker tag hayfrp_file_node:${{ steps.sha.outputs.short_sha }} hayfrp_file_node_${platform}:${{ steps.sha.outputs.short_sha }}
+            docker save -o artifacts/hayfrp_file_node_${platform}_${{ steps.sha.outputs.short_sha }}.tar hayfrp_file_node_${platform}:${{ steps.sha.outputs.short_sha }}
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: artifacts/

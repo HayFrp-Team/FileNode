@@ -5,6 +5,8 @@
 - 推荐使用 Docker 部署
 - 直接使用 Python 请注意env、systemd、crontab的配置
 
+> 如果无法连接到 Docker Hub 以及 GHCR， 可自行构建镜像或在Action中下载构件。
+
 ## API
 
 ### 1. 获取文件列表
