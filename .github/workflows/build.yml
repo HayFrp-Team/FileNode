@@ -25,25 +25,12 @@ jobs:
         id: sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build and export
-        uses: docker/build-push-action@v5
-        with:
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            hayfrp_file_node:${{ steps.sha.outputs.short_sha }}
-          outputs: "type=oci,dest=./image.tar"  # 修改导出格式为oci
-
-      - name: Split multi-arch images
+      - name: Build with buildx
         run: |
-          mkdir -p artifacts
-          docker load --input image.tar
-          for platform in linux-amd64 linux-arm64; do
-            docker tag hayfrp_file_node:${{ steps.sha.outputs.short_sha }} hayfrp_file_node_${platform}:${{ steps.sha.outputs.short_sha }}
-            docker save -o artifacts/hayfrp_file_node_${platform}_${{ steps.sha.outputs.short_sha }}.tar hayfrp_file_node_${platform}:${{ steps.sha.outputs.short_sha }}
-          done
+          docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,darwin -t hayfrp_file_node:${{ steps.sha.outputs.short_sha }} -o type=tar,dest=- . > hayfrp_file_node_${{ steps.sha.outputs.short_sha }}.tar
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: docker-images
-          path: artifacts/
+          name: hayfrp_file_node_${{ steps.sha.outputs.short_sha }}.tar
+          path: hayfrp_file_node_${{ steps.sha.outputs.short_sha }}.tar
