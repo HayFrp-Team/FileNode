@@ -9,7 +9,7 @@ from typing import Dict, List
 # 获取文件列表
 def fetch_remote_files() -> List[Dict[str, str]]:
     try:
-resp = requests.get('https://apiv3.hayfrp.com/file/list', params={'node': config.node_uuid}, timeout=10)
+        resp = requests.get(f"{config.api_url}/file/list", params={'node': config.node_uuid}, timeout=10)
         if resp.status_code == 200:
             return resp.json().get('data', [])
     except Exception as e:
@@ -43,7 +43,7 @@ def download_file(task: Dict[str, str]) -> bool:
     for attempt in range(config.max_retry + 1):
         try:
             params = {'name': filename, 'hash': expected_hash, 'node': config.node_uuid}
-            resp = requests.get('https://apiv3.hayfrp.com/file/get', 
+            resp = requests.get(f"{config.api_url}/file/get", 
                               params=params, timeout=30)
             
             if resp.status_code != 200:

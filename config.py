@@ -26,4 +26,9 @@ class Config:
         """节点UUID"""
         return os.getenv('NODE_UUID', 'non-official')
 
+    @property
+    def api_url(self) -> str:
+        """API服务地址"""
+        return os.getenv('APIURL', 'https://apiv3.hayfrp.com')
+
 config = Config()
