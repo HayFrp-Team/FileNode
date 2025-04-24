@@ -3,8 +3,8 @@ import os
 class Config:
     @property
     def workdir(self) -> str:
-        """文件存储目录，默认./file"""
-        return os.getenv('WORKDIR', 'file')
+        """文件存储目录，默认/opt/HayFrp/FileNode/files"""
+        return os.getenv('WORKDIR', '/opt/HayFrp/FileNode/files')
     
     @property
     def port(self) -> int:
@@ -29,6 +29,6 @@ class Config:
     @property
     def api_url(self) -> str:
         """API服务地址"""
-        return os.getenv('APIURL', 'https://apiv3.hayfrp.com')
+        return os.getenv('APIURL', 'https://file.hayfrp.com')
 
 config = Config()
