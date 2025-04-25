@@ -34,6 +34,6 @@
 ```
 
 ### 3. 文件下载
-- 路径: `/file/<filename>`
+- 路径: `/files/<filename>`
 - 方法: GET
 - 返回: 文件内容

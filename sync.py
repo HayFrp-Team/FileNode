@@ -26,9 +26,14 @@ def calculate_hash(fpath: str) -> str:
 def get_local_files() -> Dict[str, str]:
     file_map = {}
     with Pool(cpu_count()) as pool:
-        files = [os.path.join(config.workdir, f) 
-                for f in os.listdir(config.workdir)
-                if os.path.isfile(os.path.join(config.workdir, f))]
+        target_dir = os.path.abspath(config.workdir)
+        files = []
+        for root, dirs, filenames in os.walk(target_dir):
+            rel_root = os.path.relpath(root, config.workdir)
+            for f in filenames:
+                full_path = os.path.join(rel_root, f).replace('\\', '/')
+                files.append(config.workdir+"/"+full_path)
+
         hashes = pool.map(calculate_hash, files)
         
         for fname, fhash in zip(files, hashes):
@@ -61,6 +66,7 @@ def download_file(task: Dict[str, str]) -> bool:
                 continue
                 
             dest_path = os.path.join(config.workdir, filename)
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             with open(dest_path, 'wb') as f:
                 f.write(file_data)
                 
