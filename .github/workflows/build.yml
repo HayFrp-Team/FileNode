@@ -27,7 +27,11 @@ jobs:
 
       - name: Build with buildx
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t hayfrp_file_node:${{ steps.sha.outputs.short_sha }} -o type=tar,dest=- . > hayfrp_file_node_${{ steps.sha.outputs.short_sha }}.tar
+          docker buildx build --platform linux/amd64,linux/arm64 -t hayfrp_file_node:${{ steps.sha.outputs.short_sha }} .
+      
+      - name: Save image as tar file
+        run: |
+          docker save -o hayfrp_file_node_${{ steps.sha.outputs.short_sha }}.tar hayfrp_file_node:${{ steps.sha.outputs.short_sha }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
